@@ -43,6 +43,7 @@ def close_connection(exception):
 
 def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
+
 	# TODO don's use string insertion - use sql cleansing to avoid sql injection
 	sql = "INSERT INTO users (username, password_hash, time) VALUES('%s', '%s', '%s')" %(username, password_hash, time)
 	print(sql)
@@ -71,8 +72,18 @@ def users():
 # implementing the users endpoint POST functionality to add users
 @app.route('/users',methods=['POST'])
 def add_user():
-	print(add_user_to_db(username=request.form['username'], time=request.form['timestamp'], password_hash=request.form['password_hash']))
-	return '', status.HTTP_200_OK
+	sql = "SELECT * from users WHERE username='%s'" %(request.form['username'])
+	db = get_db()
+	cursor=db.cursor()
+	cursor.execute(sql)
+
+	exist = cursor.fetchone()
+	if exist is None:
+		print(add_user_to_db(username=request.form['username'], time=request.form['timestamp'], password_hash=request.form['password_hash']))
+		return '', status.HTTP_200_OK
+	else:
+		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
+
 
 # implementing the users endpoint GET functionality to look up users
 @app.route('/users',methods=['GET'])
