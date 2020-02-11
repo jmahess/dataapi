@@ -9,7 +9,7 @@ def get_db():
 	db = getattr(g, '_database', None)
 	if db is None:
 		db = g._database = sqlite3.connect(DATABASE)
-		db.execute('CREATE TABLE IF NOT EXISTS students (name TEXT, age TEXT, sex TEXT)')
+		db.execute('CREATE TABLE IF NOT EXISTS students (name TEXT, sex TEXT, age INT)')
 
 		db.row_factory = sqlite3.Row
 	return db
@@ -60,7 +60,7 @@ def add_user():
 	print(add_student(name=request.form['name'], age=request.form['age'], sex=request.form['sex']))
 	return ''
 
-@app.route('/find_user')
+@app.route('/add',methods=['GET'])
 def find_user_by_name():
 	name = request.args.get('name', '')
 	student = find_student(name)
