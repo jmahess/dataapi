@@ -17,7 +17,7 @@ def get_db():
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
 		# creat the tables if it is the first time accessing the database
-		db.execute('CREATE TABLE IF NOT EXISTS users (username TEXT, password_hash TEXT, time TEXT)')
+		db.execute('CREATE TABLE IF NOT EXISTS users (userid TEXT, username TEXT, password_hash TEXT, time TEXT)')
 		db.row_factory = sqlite3.Row
 	return db
 
@@ -41,11 +41,11 @@ def close_connection(exception):
 # 			db.cursor().executescript(f.read())
 # 		db.commit()
 
-def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-04T22:44:30.652Z'):
+def add_user_to_db(userid='testuserid', username='test', password_hash='PASSWORDHASH', time='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
 
 	# TODO don's use string insertion - use sql cleansing to avoid sql injection
-	sql = "INSERT INTO users (username, password_hash, time) VALUES('%s', '%s', '%s')" %(username, password_hash, time)
+	sql = "INSERT INTO users (userid, username, password_hash, time) VALUES('%s', '%s', '%s', '%s')" %(userid, username, password_hash, time)
 	print(sql)
 	db = get_db()
 	db.execute(sql)
@@ -79,8 +79,9 @@ def add_user():
 
 	exist = cursor.fetchone()
 	if exist is None:
-		print(add_user_to_db(username=request.form['username'], time=request.form['timestamp'], password_hash=request.form['password_hash']))
-		return '', status.HTTP_200_OK
+		userid = abs(hash(request.form['username'])) # make a userid by hashing the username
+		print(add_user_to_db(userid, username=request.form['username'], time=request.form['timestamp'], password_hash=request.form['password_hash']))
+		return jsonify(userid=str(userid)), status.HTTP_200_OK
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
@@ -90,7 +91,7 @@ def add_user():
 def find_user_by_name():
 	username = request.args.get('username', '')
 	user = find_user_from_db(username)
-	return jsonify(username=user['username'], timestamp=user['time'], password_hash=user['password_hash']), status.HTTP_200_OK
+	return jsonify(userid=user['userid'], username=user['username'], timestamp=user['time'], password_hash=user['password_hash']), status.HTTP_200_OK
 
 # run the application
 if __name__ == '__main__' : app.run(debug=True)
