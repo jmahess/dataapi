@@ -72,15 +72,25 @@ def users():
 # implementing the users endpoint POST functionality to add users
 @app.route('/users',methods=['POST'])
 def add_user():
-	sql = "SELECT * from users WHERE username='%s'" %(request.form['username'])
+	# check if we have all the variables
+	username = request.args.get("username")
+	timestamp = request.args.get("timestamp")
+	password_hash = request.args.get("password_hash")
+
+	# if we dont have the username then return as a bad request
+	if username is None or timestamp is None or password_hash is None or len(request.args) != 3:
+		# have invalid number or arguents, or invalid argument names
+		return '', status.HTTP_400_BAD_REQUEST
+
+	sql = "SELECT * from users WHERE username='%s'" %(username)
 	db = get_db()
 	cursor=db.cursor()
 	cursor.execute(sql)
 
 	exist = cursor.fetchone()
 	if exist is None:
-		userid = abs(hash(request.form['username'])) # make a userid by hashing the username
-		print(add_user_to_db(userid, username=request.form['username'], time=request.form['timestamp'], password_hash=request.form['password_hash']))
+		userid = abs(hash(username)) # make a userid by hashing the username
+		print(add_user_to_db(userid, username=username, time=timestamp, password_hash=password_hash))
 		return jsonify(userid=str(userid)), status.HTTP_200_OK
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
@@ -89,7 +99,13 @@ def add_user():
 # implementing the users endpoint GET functionality to look up users
 @app.route('/users',methods=['GET'])
 def find_user_by_name():
-	username = request.args.get('username', '')
+	# check that we have one argument and that is the username
+	username = request.args.get('username')
+
+	if username is None or len(request.args) != 1:
+		# have invalid number or arguents, or invalid argument names
+		return '', status.HTTP_400_BAD_REQUEST
+
 	user = find_user_from_db(username)
 	return jsonify(userid=user['userid'], username=user['username'], timestamp=user['time'], password_hash=user['password_hash']), status.HTTP_200_OK
 
