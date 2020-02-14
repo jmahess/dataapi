@@ -3,6 +3,7 @@
 # use the flask framework to build the web apis
 from flask import Flask, jsonify, g, request
 from flask_api import status # for http status codes
+import iso8601 # used to verify ISO 8601 timestamp format
 
 # database access - sqllite
 from sqlite3 import dbapi2 as sqlite3
@@ -82,6 +83,19 @@ def add_user():
 		# have invalid number or arguents, or invalid argument names
 		return '', status.HTTP_400_BAD_REQUEST
 
+	# now verify that we have a valid timestamp format
+	try:
+		# see if we can succesfully parse the timestamp
+	    result = iso8601.parse_date(timestamp)
+	except Exception as e: # if not the catch the exception
+		# log an error message and the exception
+		print('Invalid timestamp format: %s' %(timestamp))
+		print(e)
+		# return bad request due to invalid date format
+		return '', status.HTTP_400_BAD_REQUEST
+
+
+	# TODO - fix sql injection issue - use better string insertion
 	sql = "SELECT * from users WHERE username='%s'" %(username)
 	db = get_db()
 	cursor=db.cursor()
