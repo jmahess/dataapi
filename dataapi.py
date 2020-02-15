@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+
 # use the flask framework to build the web apis
 from flask import Flask, jsonify, g, request
 from flask_api import status # for http status codes
 import iso8601 # used to verify ISO 8601 timestamp format
-
 # database access - sqllite
 from sqlite3 import dbapi2 as sqlite3
+
 # the name of the database
 DATABASE = './db/test.db'
 app = Flask(__name__)
@@ -28,11 +29,15 @@ def close_connection(exception):
 	db = getattr(g, '_database', None)
 	if db is not None: db.close()
 
-# def query_db(query, args=(), one=False):
-# 	cur = get_db().execute(query, args)
-# 	rv = cur.fetchall()
-# 	cur.close()
-# 	return (rv[0] if rv else None) if one else rv
+# method to query the database safely using args instead of direct string insertion. This
+# protects against sql injection attack
+def query_db(query, args=(), one=False):
+	db = get_db()
+	cur = db.execute(query, args)
+	rv = cur.fetchall()
+	db.commit()
+	cur.close()
+	return (rv[0] if rv else None) if one else rv
 
 # initialize the database
 # def init_db():
@@ -46,12 +51,8 @@ def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-
 	# users is the name of the table in the sqldb
 
 	# TODO don's use string insertion - use sql cleansing to avoid sql injection
-	sql = "INSERT INTO users (username, password_hash, time) VALUES('%s', '%s', '%s')" %(username, password_hash, time)
-	print(sql)
-	db = get_db()
-	db.execute(sql)
-	res = db.commit()
-	return res
+	query = 'INSERT INTO users (username, password_hash, time) VALUES (?, ?, ?)'
+	return query_db(query, [username, password_hash, time], False)
 
 def find_user_from_db(username=''):
 	# TODO don's use string insertion - use sql cleansing to avoid sql injection
@@ -94,7 +95,6 @@ def add_user():
 		print(e)
 		# return bad request due to invalid date format
 		return '', status.HTTP_400_BAD_REQUEST
-
 
 	# TODO - fix sql injection issue - use better string insertion
 	sql = "SELECT * from users WHERE username='%s'" %(username)
