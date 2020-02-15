@@ -31,11 +31,14 @@ def close_connection(exception):
 
 # method to query the database safely using args instead of direct string insertion. This
 # protects against sql injection attack
+# query = the sql query to execute
+# args = the arguments to insert into the query
+# one = do we just want the first result or do we want all the results
 def query_db(query, args=(), one=False):
 	db = get_db()
 	cur = db.execute(query, args)
 	rv = cur.fetchall()
-	db.commit()
+	db.commit() # need to commit in case we are inserting new values eg users or messages
 	cur.close()
 	return (rv[0] if rv else None) if one else rv
 
@@ -52,24 +55,16 @@ def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-
 
 	# TODO don's use string insertion - use sql cleansing to avoid sql injection
 	query = 'INSERT INTO users (username, password_hash, time) VALUES (?, ?, ?)'
-	return query_db(query, [username, password_hash, time], False)
+	args = [username, password_hash, time] # the arguments for the query
+	return query_db(query, args, False)
 
 def find_user_from_db(username=''):
-	# TODO don's use string insertion - use sql cleansing to avoid sql injection
 	# rowid is the index of the row. It starts a 1 (not zero)
-	sql = "select rowid, * from users where username = '%s' limit 1" %(username)
-	print(sql)
-	db = get_db()
-	rv = db.execute(sql)
-	res = rv.fetchall()
-	rv.close()
-	return res[0]
-
-# TODO - remove this before submitting
-@app.route('/')
-def users():
-	return jsonify(hello='world')
-
+	query = 'select rowid, * from users where username = (?) limit 1'
+	args = [username]
+	got = query_db(query, args, True)
+	print("Got: %s" %(got))
+	return got
 
 
 # implementing the users endpoint POST functionality to add users
