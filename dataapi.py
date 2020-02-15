@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 # use the flask framework to build the web apis
 from flask import Flask, jsonify, g, request
 from flask_api import status # for http status codes
@@ -18,7 +17,7 @@ def get_db():
 	if db is None:
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
-		# creat the tables if it is the first time accessing the database
+		# create the tables if it is the first time accessing the database
 		db.execute('CREATE TABLE IF NOT EXISTS users (userid TEXT, username TEXT, password_hash TEXT, time TEXT)')
 		db.row_factory = sqlite3.Row
 	return db
@@ -91,14 +90,14 @@ def add_user():
 		# return bad request due to invalid date format
 		return '', status.HTTP_400_BAD_REQUEST
 
-	# TODO - fix sql injection issue - use better string insertion
-	sql = "SELECT * from users WHERE username='%s'" %(username)
-	db = get_db()
-	cursor=db.cursor()
-	cursor.execute(sql)
+	# query the db to check if the username is already in use
+	query = 'select * from users where username = (?)'
+	args = [username]
 
-	exist = cursor.fetchone()
-	if exist is None:
+	got = query_db(query, args, True)
+	print("Got: %s" %(got))	
+
+	if got is None:
 		print(add_user_to_db(username=username, time=timestamp, password_hash=password_hash))
 
 		# return jsonify(userid=str(userid)), status.HTTP_200_OK
