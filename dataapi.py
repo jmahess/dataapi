@@ -57,6 +57,8 @@ def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-
 	args = [username, password_hash, time] # the arguments for the query
 	return query_db(query, args, False)
 
+# this method finds one specific user from the database, it does NOT find a list of users
+# TODO - functionality to look up a list of multiple users
 def find_user_from_db(username=''):
 	# rowid is the index of the row. It starts a 1 (not zero)
 	query = 'select rowid, * from users where username = (?) limit 1'
@@ -106,8 +108,9 @@ def add_user():
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
 
+# TODO this is used for TESTING ONLY - remove prior to submission
 # implementing the users endpoint GET functionality to look up users
-@app.route('/users',methods=['GET'])
+@app.route('/getuser',methods=['GET'])
 def find_user_by_name():
 	# check that we have one argument and that is the username
 	username = request.args.get('username')
