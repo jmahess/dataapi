@@ -108,6 +108,73 @@ def add_user():
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
 
+
+# returns an array of users matching certain criteria
+@app.route('/users',methods=['GET'])
+def get_user_array():
+
+	index = request.args.get('index')
+	vector = request.args.get('vector')
+	sort = request.args.get('sort')
+
+	if index is None:
+		# TODO - get the max row in the DB and set the index to that rowID minus 1 (index is zero indexed, rowid is one indexed)
+		index = 1
+
+	if vector is None:
+		# default vector value
+		vector = -10
+
+	# TODO ask how to handle empty variables when there is a default?
+	if sort is None or len(sort) == 0:
+		sort = 'username'
+	
+	# TODO - check index is in the range of rows
+
+	# convert sort to lowercase
+	# TODO ask ben if we need to do this or if it should be case sensitive
+	sort = sort.lower()
+
+	# TODO - check index and vector are valid integers
+	print("Index: %s" %(index))
+	print("Vector: %s" %(vector))
+	print("Sort: %s" %(sort))
+
+	# check that index and vector are both integers
+	try:
+		index = int(index)
+		vector = int(vector)
+	except:
+		print("Index and vector must be integers")		
+		return '', status.HTTP_400_BAD_REQUEST
+
+
+	if index < 0:
+		# bad request so return
+		print("Index must be non negative")		
+		return '', status.HTTP_400_BAD_REQUEST
+
+	if sort != 'username' and sort != 'timestamp':
+		# bad request so return
+		print("Sort must be 'username' or 'timestamp'")				
+		return '', status.HTTP_400_BAD_REQUEST
+
+	# TODO - return the actual list of users
+	return '', status.HTTP_200_OK
+
+
+
+	
+# run the application
+if __name__ == '__main__' : app.run(debug=True)
+
+
+
+
+
+
+
+
 # TODO this is used for TESTING ONLY - remove prior to submission
 # implementing the users endpoint GET functionality to look up users
 @app.route('/getuser',methods=['GET'])
