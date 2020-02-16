@@ -168,6 +168,9 @@ def get_user_array():
 	args = [sort]
 	got = query_db(query, args, False)	
 
+
+	# TODO DO NOT USE ROW ID AS USER ID AS IT CHANGES BASED ON OUTPUT !!!! ASSIGN ONE MANUALLY
+
 	print("Selected rows: %s" %(got))
 	for row in got:
 		print("Got row: %s" %(list(row)))
