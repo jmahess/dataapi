@@ -17,8 +17,8 @@ def get_db():
 	if db is None:
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
-		# create the tables if it is the first time accessing the database
-		db.execute('CREATE TABLE IF NOT EXISTS users (userid TEXT, username TEXT, password_hash TEXT, timestamp TEXT)')
+		# create the tables if it is the first time accessing the database, auto increment the userid
+		db.execute('CREATE TABLE IF NOT EXISTS users (userid INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, timestamp TEXT)')
 		db.row_factory = sqlite3.Row
 	return db
 
@@ -58,8 +58,7 @@ def add_user_to_db(username='test', password_hash='PASSWORDHASH', timestamp='201
 # this method finds one specific user from the database, it does NOT find a list of users
 # TODO - functionality to look up a list of multiple users
 def find_user_from_db(username=''):
-	# rowid is the index of the row. It starts a 1 (not zero)
-	query = 'select rowid, * from users where username = (?) limit 1'
+	query = 'select * from users where username = (?) limit 1'
 	args = [username]
 	got = query_db(query, args, True)
 	print("Got: %s" %(got))
@@ -101,7 +100,7 @@ def add_user():
 		# now get the userid to return
 		got = find_user_from_db(username)
 
-		return jsonify(userid=got['rowid']), status.HTTP_200_OK
+		return jsonify(userid=got['userid']), status.HTTP_200_OK
 		return '', status.HTTP_200_OK
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
@@ -164,8 +163,10 @@ def get_user_array():
 		return '', status.HTTP_400_BAD_REQUEST
 
 	# now we have the valid variables let's query the db for the information
-	query = 'select rowid, * from users order by ?'
-	args = [sort]
+	print("Sort: %s" %(sort))
+
+	query = 'select * from users order by username'
+	args = []
 	got = query_db(query, args, False)	
 
 
@@ -215,7 +216,7 @@ def find_user_by_name():
 		return '', status.HTTP_400_BAD_REQUEST
 
 	user = find_user_from_db(username)
-	return jsonify(userid=user['rowid'], username=user['username'], timestamp=user['timestamp'], password_hash=user['password_hash']), status.HTTP_200_OK
+	return jsonify(userid=user['userid'], username=user['username'], timestamp=user['timestamp'], password_hash=user['password_hash']), status.HTTP_200_OK
 
 # run the application
 if __name__ == '__main__' : app.run(debug=True)
