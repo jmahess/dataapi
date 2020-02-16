@@ -51,8 +51,6 @@ def query_db(query, args=(), one=False):
 
 def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
-
-	# TODO don's use string insertion - use sql cleansing to avoid sql injection
 	query = 'INSERT INTO users (username, password_hash, time) VALUES (?, ?, ?)'
 	args = [username, password_hash, time] # the arguments for the query
 	return query_db(query, args, False)
@@ -112,30 +110,31 @@ def add_user():
 # returns an array of users matching certain criteria
 @app.route('/users',methods=['GET'])
 def get_user_array():
-
+	# get the variables from the request arguments
 	index = request.args.get('index')
 	vector = request.args.get('vector')
 	sort = request.args.get('sort')
 
+	# set default if index was not provided
 	if index is None:
-		# TODO - get the max row in the DB and set the index to that rowID minus 1 (index is zero indexed, rowid is one indexed)
-		index = 1
+		# get the max row in the DB and set the index to that rowID minus 1 (index is zero indexed, rowid is one indexed)
+		# this is the default value for index
+		index = getNumberOfUsers() - 1
 
+	# set default if index was not provided
 	if vector is None:
 		# default vector value
 		vector = -10
 
-	# TODO ask how to handle empty variables when there is a default?
+	# TODO ASK - how to handle empty variables when there is a default?
 	if sort is None or len(sort) == 0:
 		sort = 'username'
 	
-	# TODO - check index is in the range of rows
-
 	# convert sort to lowercase
-	# TODO ask ben if we need to do this or if it should be case sensitive
+	# TODO ASK ben if we need to do this or if it should be case sensitive
 	sort = sort.lower()
 
-	# TODO - check index and vector are valid integers
+	# TODO remove print statements before submitting
 	print("Index: %s" %(index))
 	print("Vector: %s" %(vector))
 	print("Sort: %s" %(sort))
@@ -148,6 +147,10 @@ def get_user_array():
 		print("Index and vector must be integers")		
 		return '', status.HTTP_400_BAD_REQUEST
 
+	# check that the index is in the valid range (the number of rows)
+	if index >= getNumberOfUsers():
+		print("Index must be less than the total number of users")
+		return '', status.HTTP_400_BAD_REQUEST
 
 	if index < 0:
 		# bad request so return
@@ -162,6 +165,12 @@ def get_user_array():
 	# TODO - return the actual list of users
 	return '', status.HTTP_200_OK
 
+def getNumberOfUsers():
+	query = 'SELECT COUNT(*) FROM users' # count how many users we have
+	args = [] # no arguments for this query
+	got = query_db(query, args, False)
+	numberOfUsers = int(got[0][0]) # get the number of users out of the record
+	return numberOfUsers
 
 
 	
