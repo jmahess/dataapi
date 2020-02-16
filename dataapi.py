@@ -93,14 +93,15 @@ def add_user():
 	# query the db to check if the username is already in use
 	query = 'select * from users where username = (?)'
 	args = [username]
-
 	got = query_db(query, args, True)
-	print("Got: %s" %(got))	
 
+	# if the username is not already taken then add it to the database
 	if got is None:
 		print(add_user_to_db(username=username, time=timestamp, password_hash=password_hash))
+		# now get the userid to return
+		got = find_user_from_db(username)
 
-		# return jsonify(userid=str(userid)), status.HTTP_200_OK
+		return jsonify(userid=got['rowid']), status.HTTP_200_OK
 		return '', status.HTTP_200_OK
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
