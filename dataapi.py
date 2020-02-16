@@ -18,7 +18,7 @@ def get_db():
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
 		# create the tables if it is the first time accessing the database
-		db.execute('CREATE TABLE IF NOT EXISTS users (userid TEXT, username TEXT, password_hash TEXT, time TEXT)')
+		db.execute('CREATE TABLE IF NOT EXISTS users (userid TEXT, username TEXT, password_hash TEXT, timestamp TEXT)')
 		db.row_factory = sqlite3.Row
 	return db
 
@@ -49,10 +49,10 @@ def query_db(query, args=(), one=False):
 # 			db.cursor().executescript(f.read())
 # 		db.commit()
 
-def add_user_to_db(username='test', password_hash='PASSWORDHASH', time='2013-02-04T22:44:30.652Z'):
+def add_user_to_db(username='test', password_hash='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
-	query = 'INSERT INTO users (username, password_hash, time) VALUES (?, ?, ?)'
-	args = [username, password_hash, time] # the arguments for the query
+	query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
+	args = [username, password_hash, timestamp] # the arguments for the query
 	return query_db(query, args, False)
 
 # this method finds one specific user from the database, it does NOT find a list of users
@@ -97,7 +97,7 @@ def add_user():
 
 	# if the username is not already taken then add it to the database
 	if got is None:
-		print(add_user_to_db(username=username, time=timestamp, password_hash=password_hash))
+		print(add_user_to_db(username=username, timestamp=timestamp, password_hash=password_hash))
 		# now get the userid to return
 		got = find_user_from_db(username)
 
@@ -135,7 +135,7 @@ def get_user_array():
 	# TODO ASK ben if we need to do this or if it should be case sensitive
 	sort = sort.lower()
 
-	# TODO remove print statements before submitting
+	# print variables for debugging
 	print("Index: %s" %(index))
 	print("Vector: %s" %(vector))
 	print("Sort: %s" %(sort))
@@ -162,6 +162,21 @@ def get_user_array():
 		# bad request so return
 		print("Sort must be 'username' or 'timestamp'")				
 		return '', status.HTTP_400_BAD_REQUEST
+
+	# now we have the valid variables let's query the db for the information
+	query = 'select rowid, * from users order by ?'
+	args = [sort]
+	got = query_db(query, args, False)	
+
+	print("Selected rows: %s" %(got))
+	for row in got:
+		print("Got row: %s" %(list(row)))
+
+	# now take the section according to the vector and index
+
+
+	# return the total length of the underlying array along with the array of data
+
 
 	# TODO - return the actual list of users
 	return '', status.HTTP_200_OK
@@ -197,7 +212,7 @@ def find_user_by_name():
 		return '', status.HTTP_400_BAD_REQUEST
 
 	user = find_user_from_db(username)
-	return jsonify(userid=user['rowid'], username=user['username'], timestamp=user['time'], password_hash=user['password_hash']), status.HTTP_200_OK
+	return jsonify(userid=user['rowid'], username=user['username'], timestamp=user['timestamp'], password_hash=user['password_hash']), status.HTTP_200_OK
 
 # run the application
 if __name__ == '__main__' : app.run(debug=True)
