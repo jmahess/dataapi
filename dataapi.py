@@ -157,6 +157,11 @@ def get_user_array():
 		print("Index must be non negative")		
 		return '', status.HTTP_400_BAD_REQUEST
 
+	if vector == 0:
+		# bad request so return
+		print("Vector must be non zero")		
+		return '', status.HTTP_400_BAD_REQUEST
+
 	if sort != 'username' and sort != 'timestamp':
 		# bad request so return
 		print("Sort must be 'username' or 'timestamp'")				
@@ -176,21 +181,48 @@ def get_user_array():
 	args = []
 	got = query_db(query, args, False)	
 
+	# this will hold the rows before we pick the ones to return
+	allRows = list()	
 
-	# TODO DO NOT USE ROW ID AS USER ID AS IT CHANGES BASED ON OUTPUT !!!! ASSIGN ONE MANUALLY
-
-	print("Selected rows: %s" %(got))
+	# iterate over the rows and add them to allrows
 	for row in got:
-		print("Got row: %s" %(list(row)))
+		lrow = list(row)
+		print("Got row: %s" %(lrow))
+		allRows.append(lrow)
 
-	# now take the section according to the vector and index
+	print("allRows: %s" %(allRows))
 
+	# get the start and endpoint for the subarray
+	start = 0
+	end = 0
+	# first case is looking at elements up to index
+	if vector < 0:
+		end = index
+		# move the start index
+		if not (index + vector < 0):
+			start = index + vector
+	# second case is looking at elements from index onwards			
+	else:
+		start = index
+		if index + vector >= len(allRows):
+			end = len(allRows) - 1
+		else:
+			end = index + vector
 
+	# now build the output 
+	output = list()
+	for i in range(start, end + 1):
+		# format the row correctly with labels
+		gotRow = dict()
+		gotRow['id'] = allRows[i][0]
+		gotRow['username'] = allRows[i][1]
+		gotRow['password_hash'] = allRows[i][2]
+		gotRow['timestamp'] = allRows[i][3]
+
+		output.append(gotRow)
 	# return the total length of the underlying array along with the array of data
 
-
-	# TODO - return the actual list of users
-	return '', status.HTTP_200_OK
+	return jsonify(total_length=len(allRows), array=output), status.HTTP_200_OK
 
 def getNumberOfUsers():
 	query = 'SELECT COUNT(*) FROM users' # count how many users we have
