@@ -41,29 +41,12 @@ def query_db(query, args=(), one=False):
 	cur.close()
 	return (rv[0] if rv else None) if one else rv
 
-# initialize the database
-# def init_db():
-# 	with app.app_context():
-# 		db = get_db()
-# 		with app.open_resource('schema.sql', mode='r') as f:
-# 			db.cursor().executescript(f.read())
-# 		db.commit()
-
+# method to add a user to the database
 def add_user_to_db(username='test', password_hash='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
 	query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
 	args = [username, password_hash, timestamp] # the arguments for the query
 	return query_db(query, args, False)
-
-# this method finds one specific user from the database, it does NOT find a list of users
-# TODO - functionality to look up a list of multiple users
-def find_user_from_db(username=''):
-	query = 'select * from users where username = (?) limit 1'
-	args = [username]
-	got = query_db(query, args, True)
-	print("Got: %s" %(got))
-	return got
-
 
 # implementing the users endpoint POST functionality to add users
 @app.route('/users',methods=['POST'])
@@ -104,8 +87,6 @@ def add_user():
 		return '', status.HTTP_200_OK
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
-
-
 
 # returns an array of users matching certain criteria
 @app.route('/users',methods=['GET'])
@@ -190,8 +171,6 @@ def get_user_array():
 		print("Got row: %s" %(lrow))
 		allRows.append(lrow)
 
-	print("allRows: %s" %(allRows))
-
 	# get the start and endpoint for the subarray
 	start = 0
 	end = 0
@@ -200,14 +179,14 @@ def get_user_array():
 		end = index
 		# move the start index
 		if not (index + vector < 0):
-			start = index + vector
+			start = index + vector + 1
 	# second case is looking at elements from index onwards			
 	else:
 		start = index
 		if index + vector >= len(allRows):
 			end = len(allRows) - 1
 		else:
-			end = index + vector
+			end = index + vector - 1
 
 	# now build the output 
 	output = list()
@@ -224,6 +203,7 @@ def get_user_array():
 
 	return jsonify(total_length=len(allRows), array=output), status.HTTP_200_OK
 
+# method to get the total number of users from the database
 def getNumberOfUsers():
 	query = 'SELECT COUNT(*) FROM users' # count how many users we have
 	args = [] # no arguments for this query
@@ -231,38 +211,9 @@ def getNumberOfUsers():
 	numberOfUsers = int(got[0][0]) # get the number of users out of the record
 	return numberOfUsers
 
-
 	
 # run the application
 if __name__ == '__main__' : app.run(debug=True)
-
-
-
-
-
-
-
-
-# TODO this is used for TESTING ONLY - remove prior to submission
-# implementing the users endpoint GET functionality to look up users
-@app.route('/getuser',methods=['GET'])
-def find_user_by_name():
-	# check that we have one argument and that is the username
-	username = request.args.get('username')
-
-	if username is None or len(request.args) != 1:
-		# have invalid number or arguents, or invalid argument names
-		return '', status.HTTP_400_BAD_REQUEST
-
-	user = find_user_from_db(username)
-	return jsonify(userid=user['userid'], username=user['username'], timestamp=user['timestamp'], password_hash=user['password_hash']), status.HTTP_200_OK
-
-# run the application
-if __name__ == '__main__' : app.run(debug=True)
-
-
-
-
 
 
 
