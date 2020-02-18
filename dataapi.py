@@ -165,7 +165,14 @@ def get_user_array():
 	# now we have the valid variables let's query the db for the information
 	print("Sort: %s" %(sort))
 
-	query = 'select * from users order by username'
+	if sort == 'username':
+		query = 'select * from users order by username'
+	elif sort == 'timestamp':
+		query = 'select * from users order by timestamp'
+	else:
+		print("Invalid sort value: %s" %(sort))		
+		return '', status.HTTP_400_BAD_REQUEST
+
 	args = []
 	got = query_db(query, args, False)	
 
