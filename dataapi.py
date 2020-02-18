@@ -88,6 +88,14 @@ def add_user():
 	else:
 		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
+# this helper method finds one specific user from the database
+def find_user_from_db(username=''):
+	query = 'select * from users where username = (?) limit 1'
+	args = [username]
+	got = query_db(query, args, True)
+	print("Got: %s" %(got))
+	return got
+
 # returns an array of users matching certain criteria
 @app.route('/users',methods=['GET'])
 def get_user_array():
