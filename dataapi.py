@@ -18,6 +18,9 @@ def get_db():
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
 		# create the tables if it is the first time accessing the database, auto increment the primary key
+		# note: in a product system these statements would be removed as the tables would be known to exist
+		# I have left the statements in here in case the test.db file is deleted, this allows the tables
+		# to be recreated without any manual setup
 		db.execute('CREATE TABLE IF NOT EXISTS users (userid INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, timestamp TEXT)')
 		db.execute('CREATE TABLE IF NOT EXISTS messages (msgid INTEGER PRIMARY KEY, text TEXT, author_id TEXT, timestamp TEXT)')
 		db.row_factory = sqlite3.Row
@@ -42,27 +45,25 @@ def query_db(query, args=(), one=False):
 	cur.close()
 	return (rv[0] if rv else None) if one else rv
 
-# # helper method to add items to db
-def add_item_to_db(table='users', firstString='', secondString='', timestamp=''):
-	args = [firstString, secondString, timestamp] # the arguments for the query
-	# handle the two tables
-	if table == 'users':
-		query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
-		return query_db(query, args, False)
-	elif table == 'messages':
-		query = 'INSERT INTO messages (text, author_id, timestamp) VALUES (?, ?, ?)'
-		return query_db(query, args, False)
+# implementing the users endpoint POST functionality to add users
+@app.route('/users',methods=['POST'])
+def add_user():
+	# check if we have all the variables
+	username = request.args.get("username")
+	password_hash = request.args.get("password_hash")
+	timestamp = request.args.get("timestamp")
+	# now call the add item method to check
+	return add_item('users', username, password_hash, timestamp)
 
-# method to add a user to the database
-def add_user_to_db(username='test', password_hash='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
-	# users is the name of the table in the sqldb
-	# call the helper method to insert
-	return add_item_to_db_helper('users', username, password_hash, timestamp)
-
-# method to add a message to the database
-def add_msg_to_db(text='test', author_id='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
-	# call the helper method to insert
-	return add_item_to_db_helper('messages', text, author_id, timestamp)	
+# implementing the messages endpoint POST functionality to add messages
+@app.route('/messages',methods=['POST'])
+def add_message():
+	# check if we have all the variables
+	text = request.args.get("text")
+	author_id = request.args.get("author_id")
+	timestamp = request.args.get("timestamp")
+	# now call the add item method to check
+	return add_item('messages', text, author_id, timestamp)
 
 # do validation of fields and then insert to database
 def add_item(table='users', firstString='', secondString='', timestamp=''):
@@ -116,25 +117,16 @@ def add_item(table='users', firstString='', secondString='', timestamp=''):
 		print("Invalid table")
 		return '', status.HTTP_400_BAD_REQUEST
 
-# implementing the users endpoint POST functionality to add users
-@app.route('/users',methods=['POST'])
-def add_user():
-	# check if we have all the variables
-	username = request.args.get("username")
-	password_hash = request.args.get("password_hash")
-	timestamp = request.args.get("timestamp")
-	# now call the add item method to check
-	return add_item('users', username, password_hash, timestamp)
-
-# implementing the messages endpoint POST functionality to add messages
-@app.route('/messages',methods=['POST'])
-def add_message():
-	# check if we have all the variables
-	text = request.args.get("text")
-	author_id = request.args.get("author_id")
-	timestamp = request.args.get("timestamp")
-	# now call the add item method to check
-	return add_item('messages', text, author_id, timestamp)
+# # helper method to add items to db
+def add_item_to_db(table='users', firstString='', secondString='', timestamp=''):
+	args = [firstString, secondString, timestamp] # the arguments for the query
+	# handle the two tables
+	if table == 'users':
+		query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
+		return query_db(query, args, False)
+	elif table == 'messages':
+		query = 'INSERT INTO messages (text, author_id, timestamp) VALUES (?, ?, ?)'
+		return query_db(query, args, False)
 
 # this helper method finds one specific user from the database
 def find_user_from_db(username=''):
