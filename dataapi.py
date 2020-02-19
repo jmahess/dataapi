@@ -20,7 +20,6 @@ def get_db():
 		# create the tables if it is the first time accessing the database, auto increment the primary key
 		db.execute('CREATE TABLE IF NOT EXISTS users (userid INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, timestamp TEXT)')
 		db.execute('CREATE TABLE IF NOT EXISTS messages (msgid INTEGER PRIMARY KEY, text TEXT, author_id TEXT, timestamp TEXT)')
-
 		db.row_factory = sqlite3.Row
 	return db
 
@@ -94,21 +93,20 @@ def add_item(table='users', firstString='', secondString='', timestamp=''):
 		if not (got is None):
 			return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
-	print(add_item_to_db(table, firstString, secondString, timestamp))
+	# add the item to the relevant database
+	add_item_to_db(table, firstString, secondString, timestamp)
 
-	print("Table: %s" %(table))
-
+	# handle different ID functionality - users does not allow duplicates but messages does
 	if table == 'users':
 		query = 'select * from users where username = (?) limit 1'
 		args = [firstString]
 		got = query_db(query, args, True)
-		print("Got: %s" %(list(got)))
 	elif table == 'messages':
 		query = 'SELECT MAX(msgid) FROM messages'
 		args = []
 		got = query_db(query, args, True)
-		print("Got: %s" %(list(got)))
-		
+
+	# now we get the ID to return back in the response		
 	if table == 'users':
 		# now get the id to return
 		return jsonify(id=got['userid']), status.HTTP_200_OK
@@ -117,7 +115,6 @@ def add_item(table='users', firstString='', secondString='', timestamp=''):
 	else:
 		print("Invalid table")
 		return '', status.HTTP_400_BAD_REQUEST
-
 
 # implementing the users endpoint POST functionality to add users
 @app.route('/users',methods=['POST'])
@@ -147,14 +144,8 @@ def find_user_from_db(username=''):
 	print("Got: %s" %(got))
 	return got
 
-# returns an array of users matching certain criteria
-@app.route('/users',methods=['GET'])
-def get_user_array():
-	# get the variables from the request arguments
-	index = request.args.get('index')
-	vector = request.args.get('vector')
-	sort = request.args.get('sort')
 
+def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 	# set default if index was not provided
 	if index is None:
 		# get the max row in the DB and set the index to that rowID minus 1 (index is zero indexed, rowid is one indexed)
@@ -171,7 +162,6 @@ def get_user_array():
 		sort = 'username'
 	
 	# convert sort to lowercase
-	# TODO ASK ben if we need to do this or if it should be case sensitive
 	sort = sort.lower()
 
 	# print variables for debugging
@@ -187,8 +177,14 @@ def get_user_array():
 		print("Index and vector must be integers")		
 		return '', status.HTTP_400_BAD_REQUEST
 
+	total = 0
+	if table == 'users':
+		total = getNumberOfUsers()
+	elif table == 'messages':
+		total = getNumberOfMessages()
+
 	# check that the index is in the valid range (the number of rows)
-	if index >= getNumberOfUsers():
+	if index >= total:
 		print("Index must be less than the total number of users")
 		return '', status.HTTP_400_BAD_REQUEST
 
@@ -213,7 +209,10 @@ def get_user_array():
 	if sort == 'username':
 		query = 'select * from users order by username'
 	elif sort == 'timestamp':
-		query = 'select * from users order by timestamp'
+		if table == 'users':
+			query = 'select * from users order by timestamp'
+		elif table == 'messages':
+			query = 'select * from messages order by timestamp'
 	else:
 		print("Invalid sort value: %s" %(sort))		
 		return '', status.HTTP_400_BAD_REQUEST
@@ -252,15 +251,45 @@ def get_user_array():
 	for i in range(start, end + 1):
 		# format the row correctly with labels
 		gotRow = dict()
-		gotRow['id'] = allRows[i][0]
-		gotRow['username'] = allRows[i][1]
-		gotRow['password_hash'] = allRows[i][2]
-		gotRow['timestamp'] = allRows[i][3]
-
+		if table == 'users':
+			gotRow['id'] = allRows[i][0]
+			gotRow['username'] = allRows[i][1]
+			gotRow['password_hash'] = allRows[i][2]
+			gotRow['timestamp'] = allRows[i][3]
+		elif table == 'messages':
+			gotRow['id'] = allRows[i][0]
+			gotRow['text'] = allRows[i][1]
+			gotRow['author_id'] = allRows[i][2]
+			gotRow['timestamp'] = allRows[i][3]			
 		output.append(gotRow)
 	# return the total length of the underlying array along with the array of data
-
 	return jsonify(total_length=len(allRows), array=output), status.HTTP_200_OK
+
+
+
+# returns an array of users matching certain criteria
+@app.route('/users',methods=['GET'])
+def get_user_array():
+	# get the variables from the request arguments
+	index = request.args.get('index')
+	vector = request.args.get('vector')
+	sort = request.args.get('sort')
+
+	return get_item_array('users', index, vector, sort)
+
+
+# returns an array of messages matching certain criteria
+@app.route('/messages',methods=['GET'])
+def get_messages_array():
+	# get the variables from the request arguments
+	index = request.args.get('index')
+	vector = request.args.get('vector')
+
+	return get_item_array('messages', index, vector, 'timestamp')
+
+
+
+
 
 # method to get the total number of users from the database
 def getNumberOfUsers():
@@ -270,6 +299,14 @@ def getNumberOfUsers():
 	numberOfUsers = int(got[0][0]) # get the number of users out of the record
 	return numberOfUsers
 
+# method to get the total number of messages from the database
+# could consolidate with getNumberOfUsers but since it is a short method I left it separately
+def getNumberOfMessages():
+	query = 'SELECT COUNT(*) FROM messages' # count how many users we have
+	args = [] # no arguments for this query
+	got = query_db(query, args, False)
+	numberOfMessages = int(got[0][0]) # get the number of messages out of the record
+	return numberOfMessages
 	
 # run the application
 if __name__ == '__main__' : app.run(debug=True)
