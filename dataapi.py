@@ -17,8 +17,10 @@ def get_db():
 	if db is None:
 		# connect to the database
 		db = g._database = sqlite3.connect(DATABASE)
-		# create the tables if it is the first time accessing the database, auto increment the userid
+		# create the tables if it is the first time accessing the database, auto increment the primary key
 		db.execute('CREATE TABLE IF NOT EXISTS users (userid INTEGER PRIMARY KEY, username TEXT, password_hash TEXT, timestamp TEXT)')
+		db.execute('CREATE TABLE IF NOT EXISTS messages (msgid INTEGER PRIMARY KEY, text TEXT, author_id TEXT, timestamp TEXT)')
+
 		db.row_factory = sqlite3.Row
 	return db
 
@@ -41,23 +43,32 @@ def query_db(query, args=(), one=False):
 	cur.close()
 	return (rv[0] if rv else None) if one else rv
 
+# # helper method to add items to db
+def add_item_to_db(table='users', firstString='', secondString='', timestamp=''):
+	args = [firstString, secondString, timestamp] # the arguments for the query
+	# handle the two tables
+	if table == 'users':
+		query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
+		return query_db(query, args, False)
+	elif table == 'messages':
+		query = 'INSERT INTO messages (text, author_id, timestamp) VALUES (?, ?, ?)'
+		return query_db(query, args, False)
+
 # method to add a user to the database
 def add_user_to_db(username='test', password_hash='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
 	# users is the name of the table in the sqldb
-	query = 'INSERT INTO users (username, password_hash, timestamp) VALUES (?, ?, ?)'
-	args = [username, password_hash, timestamp] # the arguments for the query
-	return query_db(query, args, False)
+	# call the helper method to insert
+	return add_item_to_db_helper('users', username, password_hash, timestamp)
 
-# implementing the users endpoint POST functionality to add users
-@app.route('/users',methods=['POST'])
-def add_user():
-	# check if we have all the variables
-	username = request.args.get("username")
-	timestamp = request.args.get("timestamp")
-	password_hash = request.args.get("password_hash")
+# method to add a message to the database
+def add_msg_to_db(text='test', author_id='PASSWORDHASH', timestamp='2013-02-04T22:44:30.652Z'):
+	# call the helper method to insert
+	return add_item_to_db_helper('messages', text, author_id, timestamp)	
 
-	# if we dont have the username then return as a bad request
-	if username is None or timestamp is None or password_hash is None or len(request.args) != 3:
+# do validation of fields and then insert to database
+def add_item(table='users', firstString='', secondString='', timestamp=''):
+	# if we dont have the firstString then return as a bad request
+	if firstString is None or timestamp is None or secondString is None or len(request.args) != 3:
 		# have invalid number or arguents, or invalid argument names
 		return '', status.HTTP_400_BAD_REQUEST
 
@@ -72,21 +83,61 @@ def add_user():
 		# return bad request due to invalid date format
 		return '', status.HTTP_400_BAD_REQUEST
 
-	# query the db to check if the username is already in use
-	query = 'select * from users where username = (?)'
-	args = [username]
-	got = query_db(query, args, True)
+	# users does not allow us to reuse usernames so check for this
+	if table == 'users':
+		# query the db to check if the username is already in use
+		query = 'select * from users where username = (?)'
+		args = [firstString]
+		got = query_db(query, args, True)
 
-	# if the username is not already taken then add it to the database
-	if got is None:
-		print(add_user_to_db(username=username, timestamp=timestamp, password_hash=password_hash))
-		# now get the userid to return
-		got = find_user_from_db(username)
+		# if the username is not already taken then add it to the database
+		if not (got is None):
+			return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
 
-		return jsonify(userid=got['userid']), status.HTTP_200_OK
-		return '', status.HTTP_200_OK
+	print(add_item_to_db(table, firstString, secondString, timestamp))
+
+	print("Table: %s" %(table))
+
+	if table == 'users':
+		query = 'select * from users where username = (?) limit 1'
+		args = [firstString]
+		got = query_db(query, args, True)
+		print("Got: %s" %(list(got)))
+	elif table == 'messages':
+		query = 'SELECT MAX(msgid) FROM messages'
+		args = []
+		got = query_db(query, args, True)
+		print("Got: %s" %(list(got)))
+		
+	if table == 'users':
+		# now get the id to return
+		return jsonify(id=got['userid']), status.HTTP_200_OK
+	elif table == 'messages':
+		return jsonify(id=got[0]), status.HTTP_200_OK
 	else:
-		return jsonify(error="username is already in use"), status.HTTP_409_CONFLICT
+		print("Invalid table")
+		return '', status.HTTP_400_BAD_REQUEST
+
+
+# implementing the users endpoint POST functionality to add users
+@app.route('/users',methods=['POST'])
+def add_user():
+	# check if we have all the variables
+	username = request.args.get("username")
+	password_hash = request.args.get("password_hash")
+	timestamp = request.args.get("timestamp")
+	# now call the add item method to check
+	return add_item('users', username, password_hash, timestamp)
+
+# implementing the messages endpoint POST functionality to add messages
+@app.route('/messages',methods=['POST'])
+def add_message():
+	# check if we have all the variables
+	text = request.args.get("text")
+	author_id = request.args.get("author_id")
+	timestamp = request.args.get("timestamp")
+	# now call the add item method to check
+	return add_item('messages', text, author_id, timestamp)
 
 # this helper method finds one specific user from the database
 def find_user_from_db(username=''):
@@ -115,7 +166,7 @@ def get_user_array():
 		# default vector value
 		vector = -10
 
-	# TODO ASK - how to handle empty variables when there is a default?
+	# handle default
 	if sort is None or len(sort) == 0:
 		sort = 'username'
 	
