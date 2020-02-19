@@ -234,7 +234,6 @@ def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 	# iterate over the rows and add them to allrows
 	for row in got:
 		lrow = list(row)
-		print("Got row: %s" %(lrow))
 		allRows.append(lrow)
 
 	# get the start and endpoint for the subarray
