@@ -141,33 +141,54 @@ def find_user_from_db(username=''):
 	query = 'select * from users where username = (?) limit 1'
 	args = [username]
 	got = query_db(query, args, True)
-	print("Got: %s" %(got))
 	return got
 
+# returns an array of users matching certain criteria
+@app.route('/users',methods=['GET'])
+def get_user_array():
+	# get the variables from the request arguments
+	index = request.args.get('index')
+	vector = request.args.get('vector')
+	sort = request.args.get('sort')
 
+	return get_item_array('users', index, vector, sort)
+
+# returns an array of messages matching certain criteria
+@app.route('/messages',methods=['GET'])
+def get_messages_array():
+	# get the variables from the request arguments
+	index = request.args.get('index')
+	vector = request.args.get('vector')
+
+	return get_item_array('messages', index, vector, 'timestamp')
+
+# this method helps looking up an array of elements from a table based on
+# the index and vector pagination scheme
 def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
+	total = 0
+	if table == 'users':
+		total = getNumberOfUsers()
+	elif table == 'messages':
+		total = getNumberOfMessages()
+
 	# set default if index was not provided
 	if index is None:
-		# get the max row in the DB and set the index to that rowID minus 1 (index is zero indexed, rowid is one indexed)
+		# get the max row in the DB and set the index to the total minus 1 
+		# (index is zero indexed)
 		# this is the default value for index
-		index = getNumberOfUsers() - 1
+		index = total - 1
 
 	# set default if index was not provided
 	if vector is None:
 		# default vector value
 		vector = -10
 
-	# handle default
+	# handle default sort value
 	if sort is None or len(sort) == 0:
 		sort = 'username'
 	
-	# convert sort to lowercase
+	# convert sort to lowercase to ignore the case
 	sort = sort.lower()
-
-	# print variables for debugging
-	print("Index: %s" %(index))
-	print("Vector: %s" %(vector))
-	print("Sort: %s" %(sort))
 
 	# check that index and vector are both integers
 	try:
@@ -177,35 +198,30 @@ def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 		print("Index and vector must be integers")		
 		return '', status.HTTP_400_BAD_REQUEST
 
-	total = 0
-	if table == 'users':
-		total = getNumberOfUsers()
-	elif table == 'messages':
-		total = getNumberOfMessages()
-
 	# check that the index is in the valid range (the number of rows)
 	if index >= total:
 		print("Index must be less than the total number of users")
 		return '', status.HTTP_400_BAD_REQUEST
 
+	# check that the index is non negative
 	if index < 0:
 		# bad request so return
 		print("Index must be non negative")		
 		return '', status.HTTP_400_BAD_REQUEST
 
+	# check that vector is non zero (zero vector would yield no results)
 	if vector == 0:
 		# bad request so return
 		print("Vector must be non zero")		
 		return '', status.HTTP_400_BAD_REQUEST
 
+	# verify that we have a valid sorting
 	if sort != 'username' and sort != 'timestamp':
 		# bad request so return
 		print("Sort must be 'username' or 'timestamp'")				
 		return '', status.HTTP_400_BAD_REQUEST
 
-	# now we have the valid variables let's query the db for the information
-	print("Sort: %s" %(sort))
-
+	# set the correct query based on which table and sorting we are looking for
 	if sort == 'username':
 		query = 'select * from users order by username'
 	elif sort == 'timestamp':
@@ -217,8 +233,8 @@ def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 		print("Invalid sort value: %s" %(sort))		
 		return '', status.HTTP_400_BAD_REQUEST
 
-	args = []
-	got = query_db(query, args, False)	
+	# now query the database
+	got = query_db(query, [], False)	
 
 	# this will hold the rows before we pick the ones to return
 	allRows = list()	
@@ -252,11 +268,13 @@ def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 		# format the row correctly with labels
 		gotRow = dict()
 		if table == 'users':
+			# add the labels for the users table fields
 			gotRow['id'] = allRows[i][0]
 			gotRow['username'] = allRows[i][1]
 			gotRow['password_hash'] = allRows[i][2]
 			gotRow['timestamp'] = allRows[i][3]
 		elif table == 'messages':
+			# add the labels for the messages table fields
 			gotRow['id'] = allRows[i][0]
 			gotRow['text'] = allRows[i][1]
 			gotRow['author_id'] = allRows[i][2]
@@ -264,32 +282,6 @@ def get_item_array(table='users', index='0', vector='-10', sort="timestamp"):
 		output.append(gotRow)
 	# return the total length of the underlying array along with the array of data
 	return jsonify(total_length=len(allRows), array=output), status.HTTP_200_OK
-
-
-
-# returns an array of users matching certain criteria
-@app.route('/users',methods=['GET'])
-def get_user_array():
-	# get the variables from the request arguments
-	index = request.args.get('index')
-	vector = request.args.get('vector')
-	sort = request.args.get('sort')
-
-	return get_item_array('users', index, vector, sort)
-
-
-# returns an array of messages matching certain criteria
-@app.route('/messages',methods=['GET'])
-def get_messages_array():
-	# get the variables from the request arguments
-	index = request.args.get('index')
-	vector = request.args.get('vector')
-
-	return get_item_array('messages', index, vector, 'timestamp')
-
-
-
-
 
 # method to get the total number of users from the database
 def getNumberOfUsers():
